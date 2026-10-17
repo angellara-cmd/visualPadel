@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Visión Pádel</title>
+    
+    <!-- Etiquetas PWA -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#ccff00">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="apple-touch-icon" href="icono.png">
+
+    <style>
+        body {
+            margin: 0; padding: 0;
+            background-color: #121212; color: #ffffff;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: flex-start;
+            height: 100vh; overflow: hidden;
+            touch-action: none; /* Evita zooms o scrolls accidentales */
+        }
+        #game-container {
+            width: 100%;
+            display: flex; justify-content: center;
+            margin-top: 10px;
+        }
+        canvas {
+            background-color: #2a2a2a;
+            border-bottom: 2px solid #555;
+            max-width: 100%;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+        }
+        #ui-panel {
+            display: flex; justify-content: space-between;
+            width: 90%; max-width: 400px;
+            margin: 15px 0; padding: 10px 20px;
+            background-color: #222; border-radius: 12px;
+            border: 1px solid #333; box-sizing: border-box;
+        }
+        .stats { font-size: 16px; font-weight: 500; color: #ddd; }
+        .highlight { color: #ccff00; font-weight: bold; font-size: 20px; }
+        
+        /* Botonera táctil */
+        #keyboard {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 6px; width: 95%; max-width: 500px;
+            padding: 10px; box-sizing: border-box;
+        }
+        .tecla {
+            background-color: #333; color: #fff;
+            border: 1px solid #555; border-radius: 8px;
+            padding: 12px 0; font-size: 18px; font-weight: bold;
+            text-align: center; cursor: pointer;
+            user-select: none; transition: background-color 0.1s;
+        }
+        .tecla:active { background-color: #ccff00; color: #000; }
+    </style>
+</head>
+<body>
+
+    <div id="game-container">
+        <!-- Canvas adaptado a proporciones móviles -->
+        <canvas id="pistaCanvas" width="400" height="250"></canvas>
+    </div>
+
+    <div id="ui-panel">
+        <div class="stats">Nivel: <span id="nivelUI" class="highlight">1</span></div>
+        <div class="stats">Puntos: <span id="puntosUI" class="highlight">0</span></div>
+    </div>
+
+    <div id="keyboard"></div>
+
+    <script>
+        // Registro del Service Worker para PWA Offline
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js');
+            });
+        }
+
+        const canvas = document.getElementById('pistaCanvas');
+        const ctx = canvas.getContext('2d');
+        const puntosUI = document.getElementById('puntosUI');
+        const nivelUI = document.getElementById('nivelUI');
+        const keyboard = document.getElementById('keyboard');
+
+        const simbolos = "23456789ABCDEFGHJKLMNPRSTUVWXYZ"; 
+        
+        // Adaptar canvas al ancho del móvil
+        function ajustarCanvas() {
+            canvas.width = window.innerWidth;
+            if(canvas.width > 600) canvas.width = 600;
+        }
+        ajustarCanvas();
+        window.addEventListener('resize', ajustarCanvas);
+
+        let animacionId; let puntos = 0; let nivel = 1; let velocidadBaseX = 2.5;
+        const SUELO_Y = canvas.height - 40;
+
+        let bola = {
+            x: 0, y: 0, radio: 15, velocidadX: 0, velocidadY: 0,
+            gravedad: 0.3, rebote: -0.75, angulo: 0, velRotacion: 0,
+            simbolo: '', color: '#ccff00' 
+        };
+
+        // Generar teclado táctil
+        function crearTeclado() {
+            for (let char of simbolos) {
+                let btn = document.createElement('div');
+                btn.className = 'tecla';
+                btn.textContent = char;
+                // Usamos touchstart para menor latencia en móviles
+                btn.addEventListener('touchstart', (e) => {
+                    e.preventDefault();
+                    comprobarAcierto(char);
+                });
+                btn.addEventListener('click', () => comprobarAcierto(char)); // Fallback
+                keyboard.appendChild(btn);
+            }
+        }
+        crearTeclado();
+
+        function lanzarBola() {
+            bola.x = -bola.radio; 
+            bola.y = Math.random() * 80 + 30; 
+            bola.velocidadX = velocidadBaseX + (nivel * 0.4); 
+            bola.velocidadY = (Math.random() * 3) - 1.5; 
+            bola.velRotacion = (Math.random() * 0.2) + 0.05; 
+            if (Math.random() > 0.5) bola.velRotacion *= -1; 
+            bola.simbolo = simbolos.charAt(Math.floor(Math.random() * simbolos.length));
+        }
+
+        function dibujarEntorno() {
+            ctx.fillStyle = '#222'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.strokeStyle = '#2c2c2c'; ctx.lineWidth = 1;
+            for(let i = 0; i < canvas.width; i += 30) { ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, canvas.height); ctx.stroke(); }
+            for(let i = 0; i < canvas.height; i += 30) { ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(canvas.width, i); ctx.stroke(); }
+            
+            let tiempo = Date.now() * 0.0015;
+            let rivalX = (canvas.width/2) + Math.sin(tiempo) * (canvas.width/3);
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+            ctx.beginPath(); ctx.ellipse(rivalX, SUELO_Y - 50, 20, 60, 0, 0, Math.PI * 2); ctx.fill();
+
+            ctx.fillStyle = '#1b3b22'; ctx.fillRect(0, SUELO_Y, canvas.width, canvas.height - SUELO_Y);
+            ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.moveTo(0, SUELO_Y + 1); ctx.lineTo(canvas.width, SUELO_Y + 1); ctx.stroke();
+        }
+
+        function actualizar() {
+            dibujarEntorno();
+            bola.velocidadY += bola.gravedad; 
+            bola.x += bola.velocidadX;        
+            bola.y += bola.velocidadY;        
+            bola.angulo += bola.velRotacion;  
+
+            if (bola.y + bola.radio >= SUELO_Y) {
+                bola.y = SUELO_Y - bola.radio; 
+                bola.velocidadY *= bola.rebote; 
+                bola.velRotacion *= 0.9; 
+            }
+
+            ctx.save();
+            ctx.translate(bola.x, bola.y);
+            ctx.rotate(bola.angulo);
+            ctx.beginPath(); ctx.arc(0, 0, bola.radio, 0, Math.PI * 2);
+            ctx.fillStyle = bola.color; ctx.fill();
+            ctx.lineWidth = 1.5; ctx.strokeStyle = '#fff'; ctx.stroke();
+
+            ctx.beginPath(); ctx.arc(-6, 0, 10, -Math.PI/2.5, Math.PI/2.5);
+            ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1.5; ctx.stroke();
+
+            ctx.fillStyle = '#000'; ctx.font = 'bold 16px Arial';
+            ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            ctx.fillText(bola.simbolo, 0, 0);
+            ctx.restore();
+
+            if (bola.x - bola.radio > canvas.width) {
+                puntos = Math.max(0, puntos - 1);
+                actualizarMarcador(); lanzarBola();
+            }
+            animacionId = requestAnimationFrame(actualizar);
+        }
+
+        function comprobarAcierto(intento) {
+            if (intento === bola.simbolo) {
+                puntos++;
+                if (puntos % 5 === 0) nivel++; 
+                actualizarMarcador(); lanzarBola();
+            } else {
+                navigator.vibrate && navigator.vibrate(50); // Vibración si falla en móvil
+            }
+        }
+
+        function actualizarMarcador() {
+            puntosUI.textContent = puntos; nivelUI.textContent = nivel;
+        }
+
+        lanzarBola(); actualizar();
+    </script>
+</body>
+</html>
