@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Visión Pádel - Malla de Reacción</title>
+    <style>
+        body {
+            margin: 0; padding: 0; background-color: #121212; color: #ffffff;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex; flex-direction: column; align-items: center;
+            height: 100vh; overflow: hidden; touch-action: none;
+        }
+        #ui-panel {
+            display: flex; justify-content: space-between;
+            width: 90%; max-width: 600px; margin: 20px 0; padding: 15px;
+            background-color: #222; border-radius: 12px; border: 1px solid #333;
+            box-sizing: border-box;
+        }
+        .stats { font-size: 16px; font-weight: 500; color: #ddd; text-align: center; }
+        .highlight { color: #ccff00; font-weight: bold; font-size: 20px; display: block; margin-top: 5px; }
+        .ms { color: #00e5ff; } /* Color para los milisegundos */
+        
+        #game-container {
+            width: 100%; display: flex; justify-content: center; position: relative;
+        }
+        canvas {
+            background-color: #2a2a2a; border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5); border: 2px solid #555;
+            max-width: 95%;
+        }
+        #mensaje {
+            position: absolute; top: 40%; width: 100%; text-align: center;
+            font-size: 24px; font-weight: bold; color: #ff3366;
+            pointer-events: none; opacity: 0; transition: opacity 0.2s;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="ui-panel">
+        <div class="stats">Puntos <span id="puntosUI" class="highlight">0</span></div>
+        <div class="stats">Reacción <span id="tiempoUI" class="highlight ms">-- ms</span></div>
+        <div class="stats">Fallo <span id="vidasUI" class="highlight" style="color: #ff3366">0</span></div>
+    </div>
+
+    <div id="game-container">
+        <canvas id="reaccionCanvas" width="400" height="500"></canvas>
+        <div id="mensaje">¡Toca ahora!</div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('reaccionCanvas');
+        const ctx = canvas.getContext('2d');
+        const puntosUI = document.getElementById('puntosUI');
+        const tiempoUI = document.getElementById('tiempoUI');
+        const vidasUI = document.getElementById('vidasUI');
+        const divMensaje = document.getElementById('mensaje');
+
+        // Ajustar canvas para móviles (pantalla vertical)
+        function ajustarCanvas() {
+            canvas.width = Math.min(window.innerWidth * 0.95, 400);
+            canvas.height = window.innerHeight * 0.6;
+        }
+        ajustarCanvas();
+        window.addEventListener('resize', ajustarCanvas);
+
+        let animacionId;
+        let puntos = 0, fallos = 0;
+        let fase = 'ida'; // Fases: 'ida', 'rebote', 'pausa'
+        let tiempoRebote = 0;
+        const LIMITE_MALLA = 60; // Píxeles desde arriba que representan la malla superior
+
+        let bola = {
+            x: 0, y: 0, radio: 18, 
+            vx: 0, vy: 0, color: '#ccff00'
+        };
+
+        function iniciarRonda() {
+            fase = 'ida';
+            // Empieza en el fondo de la pantalla
+            bola.x = canvas.width / 2;
+            bola.y = canvas.height - bola.radio;
+            
+            // Va hacia arriba (hacia la malla) a velocidad constante
+            bola.vx = (Math.random() * 2) - 1; // Ligero desvío lateral
+            bola.vy = - (4 + Math.random() * 2); // Velocidad vertical
+        }
+
+        function mostrarMensaje(texto, color) {
+            divMensaje.textContent = texto;
+            divMensaje.style.color = color;
+            divMensaje.style.opacity = 1;
+            setTimeout(() => divMensaje.style.opacity = 0, 800);
+        }
+
+        // Bucle de renderizado
+        function actualizar() {
+            ctx.fillStyle = '#222'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Dibujar la zona de la "Malla" (parte superior)
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
+            ctx.fillRect(0, 0, canvas.width, LIMITE_MALLA);
+            ctx.strokeStyle = '#444'; ctx.lineWidth = 1;
+            for(let i = 0; i < canvas.width; i += 15) {
+                ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, LIMITE_MALLA); ctx.stroke();
+            }
+            for(let i = 0; i < LIMITE_MALLA; i += 15) {
+                ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(canvas.width, i); ctx.stroke();
+            }
+
+            if (fase !== 'pausa') {
+                bola.x += bola.vx;
+                bola.y += bola.vy;
+
+                // Rebote errático en la malla superior
+                if (fase === 'ida' && bola.y - bola.radio <= LIMITE_MALLA) {
+                    fase = 'rebote';
+                    tiempoRebote = Date.now(); // Inicia el cronómetro de reflejos
+                    
+                    // Físicas impredecibles: sale disparada hacia abajo, con ángulo aleatorio y más rápido
+                    bola.vy = (Math.random() * 6) + 4; // Cae hacia abajo rápido
+                    bola.vx = (Math.random() * 12) - 6; // Ángulo lateral loco
+                    
+                    // Efecto visual al chocar (simula el ruido de la malla)
+                    ctx.fillStyle = '#ffffff';
+                    ctx.fillRect(0, 0, canvas.width, LIMITE_MALLA);
+                }
+
+                // Rebotes laterales (cristales)
+                if (bola.x + bola.radio > canvas.width || bola.x - bola.radio < 0) {
+                    bola.vx *= -1;
+                }
+
+                // Si se escapa por abajo sin ser tocada
+                if (fase === 'rebote' && bola.y - bola.radio > canvas.height) {
+                    fallos++; vidasUI.textContent = fallos;
+                    mostrarMensaje('¡Se escapó!', '#ff3366');
+                    fase = 'pausa';
+                    setTimeout(iniciarRonda, 1000);
+                }
+            }
+
+            // Dibujar Bola
+            ctx.beginPath(); ctx.arc(bola.x, bola.y, bola.radio, 0, Math.PI * 2);
+            ctx.fillStyle = bola.color; ctx.fill();
+            ctx.lineWidth = 2; ctx.strokeStyle = '#fff'; ctx.stroke();
+
+            animacionId = requestAnimationFrame(actualizar);
+        }
+
+        // Sistema de interacción Táctil / Clic
+        canvas.addEventListener('pointerdown', (e) => {
+            if (fase === 'pausa') return;
+
+            // Calcular coordenadas del toque relativas al canvas
+            const rect = canvas.getBoundingClientRect();
+            const tapX = e.clientX - rect.left;
+            const tapY = e.clientY - rect.top;
+
+            // Distancia entre el toque y el centro de la bola
+            const dist = Math.hypot(tapX - bola.x, tapY - bola.y);
+
+            // Área de tolerancia generosa (bola + margen para dedos)
+            if (dist < bola.radio * 2.5) {
+                if (fase === 'rebote') {
+                    // Acierto tras el bote
+                    let tiempoReaccion = Date.now() - tiempoRebote;
+                    puntos++;
+                    puntosUI.textContent = puntos;
+                    tiempoUI.textContent = tiempoReaccion + ' ms';
+                    
+                    mostrarMensaje('¡Cazada!', '#ccff00');
+                    fase = 'pausa';
+                    setTimeout(iniciarRonda, 500);
+                } else if (fase === 'ida') {
+                    // Penalización por tocar antes de botar (anticipación errónea)
+                    fallos++; vidasUI.textContent = fallos;
+                    mostrarMensaje('¡Demasiado pronto!', '#ff3366');
+                    fase = 'pausa';
+                    setTimeout(iniciarRonda, 1000);
+                }
+            }
+        });
+
+        // Iniciar
+        iniciarRonda();
+        actualizar();
+    </script>
+</body>
+</html>
