@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Visión Pádel - Hub</title>
+    
+    <!-- Fuentes y Tailwind CSS -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Configuración de Tailwind -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        neon: '#ccff00',
+                        darkBg: '#0d0d0d',
+                        surface: '#161616',
+                        surfaceBorder: '#2a2a2a'
+                    },
+                    boxShadow: {
+                        'neon-glow': '0 0 30px -5px rgba(204, 255, 0, 0.25)',
+                        'card-hover': '0 15px 30px -10px rgba(0,0,0,0.8), 0 0 15px -3px rgba(204, 255, 0, 0.15)',
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        /* Estilos base y resets para evitar comportamientos nativos extraños en móviles */
+        body {
+            background-color: #0d0d0d;
+            color: #ffffff;
+            -webkit-tap-highlight-color: transparent;
+            overflow-x: hidden;
+        }
+
+        /* Animaciones personalizadas */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .animate-fade-in {
+            animation: fadeIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        .delay-1 { animation-delay: 0.1s; }
+        .delay-2 { animation-delay: 0.2s; }
+        .delay-3 { animation-delay: 0.3s; }
+
+        /* Estilos de las tarjetas de menú */
+        .game-card {
+            background: linear-gradient(145deg, #1a1a1a 0%, #111111 100%);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .game-card:hover {
+            border-color: #ccff00;
+            transform: translateY(-4px);
+        }
+
+        .game-card:active {
+            transform: scale(0.97);
+            transition: all 0.1s;
+        }
+
+        /* Fallback CSS Premium por si falla la imagen */
+        .css-padel-ball {
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle at 35% 35%, #eaff4d 0%, #ccff00 50%, #8ab300 100%);
+            border-radius: 50%;
+            position: relative;
+            box-shadow: inset -10px -10px 20px rgba(0,0,0,0.4);
+            overflow: hidden;
+        }
+        .css-padel-ball::before, .css-padel-ball::after {
+            content: '';
+            position: absolute;
+            width: 120%;
+            height: 120%;
+            border: 4px solid rgba(255,255,255,0.9);
+            border-radius: 50%;
+            box-shadow: 0 0 5px rgba(0,0,0,0.2);
+        }
+        .css-padel-ball::before {
+            top: -50%; left: -60%;
+        }
+        .css-padel-ball::after {
+            bottom: -50%; right: -60%;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center justify-center p-6 relative">
+
+    <!-- Resplandor ambiental de fondo -->
+    <div class="absolute top-0 left-1/2 -translate-x-1/2 w-[120%] max-w-lg h-96 bg-neon/10 blur-[100px] rounded-full pointer-events-none z-0"></div>
+
+    <main class="w-full max-w-md z-10 flex flex-col items-center">
+        
+        <!-- Header / Zona del Logo -->
+        <header class="mb-12 text-center flex flex-col items-center w-full animate-fade-in opacity-0">
+            
+            <!-- Contenedor del Icono con marco Squircle -->
+            <div class="relative w-36 h-36 rounded-[2.5rem] p-1 bg-gradient-to-b from-surfaceBorder to-black shadow-neon-glow mb-6 overflow-hidden flex items-center justify-center group">
+                <div class="absolute inset-0 bg-surface rounded-[2.3rem]"></div>
+                
+                <!-- Imagen real (con script onerror para el fallback) -->
+                <img src="icono.png" alt="Visión Pádel" 
+                     class="w-full h-full object-cover rounded-[2.3rem] relative z-10 transition-transform duration-500 group-hover:scale-105"
+                     onerror="this.style.display='none'; document.getElementById('fallback-icon').classList.remove('hidden');">
+                
+                <!-- Fallback CSS (Oculto por defecto) -->
+                <div id="fallback-icon" class="hidden w-24 h-24 relative z-10">
+                    <div class="css-padel-ball"></div>
+                </div>
+            </div>
+
+            <!-- Título de la App -->
+            <h1 class="text-4xl font-extrabold tracking-tight text-white mb-2">
+                Visión <span class="text-neon">Pádel</span>
+            </h1>
+            <p class="text-zinc-400 text-sm font-medium uppercase tracking-widest">
+                Entrenamiento Cognitivo
+            </p>
+        </header>
+
+        <!-- Navegación a los juegos -->
+        <nav class="w-full space-y-4">
+            
+            <!-- Tarjeta 1: Visión Pádel -->
+            <a href="vision.html" class="game-card group block w-full rounded-2xl border border-surfaceBorder p-5 shadow-lg hover:shadow-card-hover animate-fade-in opacity-0 delay-1">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-4">
+                        <!-- Icono SVG -->
+                        <div class="w-14 h-14 rounded-full bg-black border border-zinc-800 flex items-center justify-center group-hover:bg-neon/10 group-hover:border-neon/30 transition-all duration-300">
+                            <svg class="w-6 h-6 text-neon" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                            </svg>
+                        </div>
+                        <!-- Textos -->
+                        <div>
+                            <h2 class="text-xl font-bold text-white group-hover:text-neon transition-colors">Visión Pádel</h2>
+                            <p class="text-sm text-zinc-400 mt-0.5">Agudeza visual dinámica</p>
+                        </div>
+                    </div>
+                    <!-- Flecha indicadora -->
+                    <div class="text-zinc-600 group-hover:text-neon group-hover:translate-x-1.5 transition-all duration-300">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                        </svg>
+                    </div>
+                </div>
+            </a>
+
+            <!-- Tarjeta 2: Reacción Pádel -->
+            <a href="reaccion.html" class="game-card group block w-full rounded-2xl border border-surfaceBorder p-5 shadow-lg hover:shadow-card-hover animate-fade-in opacity-0 delay-2">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-4">
+                        <!-- Icono SVG -->
+                        <div class="w-14 h-14 rounded-full bg-black border border-zinc-800 flex items-center justify-center group-hover:bg-neon/10 group-hover:border-neon/30 transition-all duration-300">
+                            <svg class="w-6 h-6 text-neon" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                            </svg>
+                        </div>
+                        <!-- Textos -->
+                        <div>
+                            <h2 class="text-xl font-bold text-white group-hover:text-neon transition-colors">Reacción Pádel</h2>
+                            <p class="text-sm text-zinc-400 mt-0.5">Reflejos en malla metálica</p>
+                        </div>
+                    </div>
+                    <!-- Flecha indicadora -->
+                    <div class="text-zinc-600 group-hover:text-neon group-hover:translate-x-1.5 transition-all duration-300">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                        </svg>
+                    </div>
+                </div>
+            </a>
+
+        </nav>
+        
+        <!-- Footer con versión (Estética tech) -->
+        <footer class="mt-12 text-center animate-fade-in opacity-0 delay-3">
+            <span class="px-3 py-1 bg-surface border border-surfaceBorder rounded-full text-xs text-zinc-500 font-medium">
+                v1.0.0 PRO
+            </span>
+        </footer>
+
+    </main>
+</body>
+</html>
